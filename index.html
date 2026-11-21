@@ -1,0 +1,1663 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Sketchin3D — Spatial Studio</title>
+  <style>
+    :root {
+      --bg-canvas: #141b2d;
+      --surface: rgba(16, 22, 36, 0.86);
+      --surface-elevated: rgba(24, 32, 50, 0.96);
+      --surface-hover: rgba(88, 130, 214, 0.22);
+      --border: rgba(173, 198, 238, 0.16);
+      --border-strong: rgba(114, 165, 255, 0.62);
+      --text: #f1f5fc;
+      --text-muted: #98a8c7;
+      --accent: #689bff;
+      --accent-soft: rgba(104, 155, 255, 0.2);
+      --danger: #ff6b7a;
+      --shadow: 0 10px 28px rgba(4, 7, 15, 0.44);
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+    }
+
+    html[data-theme="light"] {
+      --bg-canvas: #f2f5fa;
+      --surface: rgba(255, 255, 255, 0.88);
+      --surface-elevated: rgba(255, 255, 255, 0.97);
+      --surface-hover: rgba(37, 99, 235, 0.11);
+      --border: rgba(20, 32, 54, 0.14);
+      --border-strong: rgba(37, 99, 235, 0.58);
+      --text: #111827;
+      --text-muted: #556581;
+      --accent: #2563eb;
+      --accent-soft: rgba(37, 99, 235, 0.14);
+      --danger: #dc2626;
+      --shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100dvh;
+      overflow: hidden;
+      background: var(--bg-canvas);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    #viewport {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100dvh;
+      touch-action: none;
+      display: block;
+    }
+
+    .hud {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .pill {
+      pointer-events: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 5px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(14px) saturate(150%);
+      -webkit-backdrop-filter: blur(14px) saturate(150%);
+      box-shadow: var(--shadow);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .rail {
+      pointer-events: auto;
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      padding: 6px;
+      border-radius: 22px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(14px) saturate(150%);
+      -webkit-backdrop-filter: blur(14px) saturate(150%);
+      box-shadow: var(--shadow);
+      transition: background-color 0.2s ease, border-color 0.2s ease;
+    }
+
+    .popover {
+      pointer-events: auto;
+      position: fixed;
+      border-radius: 18px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(18px) saturate(160%);
+      -webkit-backdrop-filter: blur(18px) saturate(160%);
+      box-shadow: var(--shadow);
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      z-index: 30;
+    }
+
+    .popover.open { display: flex; }
+
+    .icon-btn {
+      width: 42px;
+      height: 42px;
+      min-width: 42px;
+      min-height: 42px;
+      border: 1px solid transparent;
+      border-radius: 14px;
+      background: transparent;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      padding: 0;
+      transition: transform 0.1s ease, background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    }
+
+    .pill .icon-btn {
+      border-radius: 999px;
+      width: 38px;
+      height: 38px;
+      min-width: 38px;
+      min-height: 38px;
+    }
+
+    .icon-btn:active { transform: scale(0.93); }
+    .icon-btn:hover:not(:disabled) { background: var(--surface-hover); }
+    .icon-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--border-strong);
+      color: var(--accent);
+    }
+    .icon-btn.danger:hover:not(:disabled) {
+      background: rgba(239, 68, 68, 0.15);
+      color: var(--danger);
+    }
+    .icon-btn:disabled { opacity: 0.34; cursor: not-allowed; }
+    .icon-btn svg {
+      width: 19px;
+      height: 19px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.9;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    .sep-h {
+      height: 1px;
+      width: 24px;
+      background: var(--border);
+      margin: 1px 0;
+    }
+    .sep-v {
+      width: 1px;
+      height: 22px;
+      background: var(--border);
+      margin: 0 1px;
+    }
+    #top-left {
+      position: fixed;
+      top: calc(10px + var(--safe-top));
+      left: calc(10px + var(--safe-left));
+    }
+    #top-right {
+      position: fixed;
+      top: calc(10px + var(--safe-top));
+      right: calc(10px + var(--safe-right));
+    }
+    #left-rail {
+      position: fixed;
+      top: calc(62px + var(--safe-top));
+      left: calc(10px + var(--safe-left));
+      max-height: calc(100dvh - 136px - var(--safe-top) - var(--safe-bottom));
+      overflow-y: auto;
+      scrollbar-width: none;
+    }
+    #left-rail::-webkit-scrollbar { display: none; }
+    #guides-card {
+      position: fixed;
+      top: calc(62px + var(--safe-top));
+      right: calc(10px + var(--safe-right));
+      width: 226px;
+    }
+    #bottom-bar {
+      position: fixed;
+      bottom: calc(12px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      max-width: calc(100vw - 20px - var(--safe-left) - var(--safe-right));
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    #bottom-bar::-webkit-scrollbar { display: none; }
+    .color-dot {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      border: 2px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25);
+      display: block;
+      pointer-events: none;
+    }
+    .card-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .card-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .seg-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 5px;
+    }
+    .seg-btn {
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 0 6px;
+    }
+    .seg-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--border-strong);
+      color: var(--accent);
+    }
+    .nudge-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 5px;
+    }
+    .mini-btn {
+      height: 36px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .mini-btn:active { transform: scale(0.95); }
+    .mini-btn.active {
+      background: var(--accent-soft);
+      border-color: var(--border-strong);
+      color: var(--accent);
+    }
+    .mini-btn svg {
+      width: 16px;
+      height: 16px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.9;
+    }
+    #brush-pop {
+      bottom: calc(64px + var(--safe-bottom));
+      left: 50%;
+      transform: translateX(-50%);
+      width: min(350px, calc(100vw - 20px));
+    }
+    .swatch-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .swatch {
+      width: 26px;
+      height: 26px;
+      border-radius: 999px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      padding: 0;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+    }
+    .swatch.active {
+      border-color: var(--text);
+      transform: scale(1.12);
+    }
+    input[type="color"] {
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      border: none;
+      border-radius: 999px;
+      background: transparent;
+      cursor: pointer;
+    }
+    .slider-line {
+      display: grid;
+      grid-template-columns: 20px 1fr 44px;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+      cursor: pointer;
+      margin: 0;
+      height: 24px;
+    }
+    .brush-list {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      max-height: 152px;
+      overflow-y: auto;
+    }
+    .brush-item {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: transparent;
+      color: var(--text);
+      padding: 6px 4px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      font-size: 10px;
+      line-height: 1.1;
+      position: relative;
+    }
+    .brush-item.active {
+      background: var(--accent-soft);
+      border-color: var(--border-strong);
+      color: var(--accent);
+    }
+    .brush-item img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      border-radius: 6px;
+      background: rgba(128, 128, 128, 0.12);
+    }
+    .brush-item svg {
+      width: 24px;
+      height: 24px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 1.8;
+    }
+    .brush-name {
+      width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .import-row { display: flex; gap: 6px; }
+    .import-btn {
+      flex: 1;
+      height: 36px;
+      border-radius: 11px;
+      border: 1px dashed var(--border-strong);
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+    .import-btn svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      fill: none;
+      stroke-width: 2;
+    }
+    #toast {
+      position: fixed;
+      top: calc(58px + var(--safe-top));
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: var(--surface-elevated);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      font-size: 11px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.16s ease, transform 0.16s ease;
+      z-index: 40;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+    #toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    #error-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(10, 14, 24, 0.9);
+      color: #f8fafc;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      z-index: 100;
+    }
+    #error-overlay.open { display: flex; }
+    .error-box {
+      max-width: 360px;
+      width: 100%;
+      background: #1b2234;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 18px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .error-box pre {
+      margin: 0;
+      font-size: 11px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #fca5a5;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 10px;
+      border-radius: 10px;
+    }
+    .retry-btn {
+      height: 40px;
+      border: none;
+      border-radius: 12px;
+      background: #4f86ff;
+      color: #fff;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    /* Sketchin3D responsive refinements */
+    button, input { font: inherit; }
+    button { touch-action: manipulation; }
+    #guides-card { max-height: calc(100dvh - 84px - var(--safe-top) - var(--safe-bottom)); overflow-y: auto; scrollbar-width: none; }
+    #guides-card::-webkit-scrollbar { display: none; }
+    #brush-pop { max-height: min(64dvh, 520px); overflow-y: auto; scrollbar-width: none; }
+    #brush-pop::-webkit-scrollbar { display: none; }
+    @media (max-width: 680px) {
+      #top-left, #top-right { gap: 1px; padding: 3px; }
+      #top-left .icon-btn, #top-right .icon-btn { width: 34px; height: 34px; min-width: 34px; min-height: 34px; }
+      #top-left { left: calc(6px + var(--safe-left)); top: calc(6px + var(--safe-top)); }
+      #top-right { right: calc(6px + var(--safe-right)); top: calc(6px + var(--safe-top)); }
+      #left-rail { left: calc(6px + var(--safe-left)); top: calc(54px + var(--safe-top)); padding: 4px; gap: 3px; border-radius: 18px; }
+      #left-rail .icon-btn { width: 38px; height: 38px; min-width: 38px; min-height: 38px; }
+      #guides-card { top: calc(54px + var(--safe-top)); right: calc(6px + var(--safe-right)); width: min(188px, 48vw); padding: 9px; gap: 7px; }
+      #bottom-bar { bottom: calc(7px + var(--safe-bottom)); gap: 1px; padding: 3px; }
+      #bottom-bar .icon-btn { width: 36px; height: 36px; min-width: 36px; min-height: 36px; }
+      .nudge-row { gap: 3px; }
+      .mini-btn { height: 32px; font-size: 10px; }
+      .seg-btn { height: 32px; }
+      .card-title { font-size: 9px; }
+    }
+    @media (max-width: 390px) {
+      #guides-card { width: 164px; }
+      #top-left .icon-btn, #top-right .icon-btn { width: 32px; min-width: 32px; }
+      #bottom-bar .icon-btn { width: 33px; min-width: 33px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="viewport"></canvas>
+  <div class="hud" id="hud">
+    <div class="pill" id="top-left">
+      <button class="icon-btn" id="btn-undo" title="Undo" disabled><svg viewBox="0 0 24 24"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+      <button class="icon-btn" id="btn-redo" title="Redo" disabled><svg viewBox="0 0 24 24"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+      <button class="icon-btn danger" id="btn-clear" title="Clear"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>
+      <div class="sep-v"></div>
+      <button class="icon-btn" id="btn-save" title="Save JSON"><svg viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></svg></button>
+      <button class="icon-btn" id="btn-load" title="Load JSON"><svg viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button>
+    </div>
+    <div class="pill" id="top-right">
+      <button class="icon-btn" id="btn-theme" title="Theme">
+        <svg id="theme-icon-sun" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></svg>
+        <svg id="theme-icon-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+      </button>
+      <button class="icon-btn" id="btn-export-obj" title="Export OBJ"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg></button>
+      <button class="icon-btn" id="btn-toggle-guides-card" title="Guides"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="8" height="8" rx="1.5"/><rect x="13" y="3" width="8" height="8" rx="1.5"/><rect x="3" y="13" width="8" height="8" rx="1.5"/><rect x="13" y="13" width="8" height="8" rx="1.5"/></svg></button>
+    </div>
+    <div class="rail" id="left-rail">
+      <button class="icon-btn active" data-mode="draw" title="Draw"><svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="m18 13-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="m2 2 7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></button>
+      <button class="icon-btn" data-mode="loft" title="Loft"><svg viewBox="0 0 24 24"><path d="M3 17c4-8 14-8 18 0"/><path d="M3 11c4-8 14-8 18 0"/><path d="M3 11v6"/><path d="M21 11v6"/></svg></button>
+      <button class="icon-btn" data-mode="eraser" title="Eraser"><svg viewBox="0 0 24 24"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg></button>
+      <button class="icon-btn" data-mode="bucket" title="Bucket · Fill closed shapes"><svg viewBox="0 0 24 24"><path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2c.8.8 2 .8 2.8 0L19 11Z"/><path d="m5 2 5 5"/><path d="M2 13h15"/><path d="M22 20a2 2 0 1 1-4 0c0-1.6 2-3.5 2-3.5s2 1.9 2 3.5Z"/></svg></button>
+      <button class="icon-btn" data-mode="pick" title="Pick"><svg viewBox="0 0 24 24"><path d="m2 22 1-1h3l9-9"/><path d="M3 21v-3l9-9"/><path d="m15 6 3.4-3.4a2.1 2.1 0 1 1 3 3L18 9l.4.4a2.1 2.1 0 1 1-3 3l-3.8-3.8a2.1 2.1 0 1 1 3-3l.4.4Z"/></svg></button>
+      <button class="icon-btn" data-mode="select" title="Select & Transform"><svg viewBox="0 0 24 24"><path d="M5 3v18l5-5 3 6 3-1.5-3-6H20L5 3Z"/><path d="M17 3h4v4"/></svg></button>
+      <div class="sep-h"></div>
+      <button class="icon-btn" id="btn-color-dot" title="Brushes, Color & Size"><span class="color-dot" id="active-color-dot" style="background:#56ccf2"></span></button>
+    </div>
+    <div class="popover" id="guides-card">
+      <div class="card-row">
+        <span class="card-title" id="plane-readout">XZ · 0.00 · 0°</span>
+        <button class="mini-btn active" id="btn-plane-vis" title="Plane Visibility" style="width:32px;height:28px;"><svg viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+      </div>
+      <div class="card-row" style="margin-top:2px;">
+        <span class="card-title">Global XYZ Axis</span>
+        <button class="mini-btn active" id="btn-global-axis" aria-pressed="true" title="Show or hide global X, Y and Z axes" style="min-width:48px;height:28px;">XYZ ON</button>
+      </div>
+      <div class="seg-grid">
+        <button class="seg-btn active" data-plane="XZ" title="Floor XZ">XZ</button>
+        <button class="seg-btn" data-plane="XY" title="Front XY">XY</button>
+        <button class="seg-btn" data-plane="YZ" title="Side YZ">YZ</button>
+      </div>
+      <div class="nudge-row">
+        <button class="mini-btn" id="btn-depth-minus" title="Depth -">D-</button>
+        <button class="mini-btn" id="btn-depth-plus" title="Depth +">D+</button>
+        <button class="mini-btn" id="btn-tilt-minus" title="Tilt -15°">-15°</button>
+        <button class="mini-btn" id="btn-tilt-plus" title="Tilt +15°">+15°</button>
+      </div>
+      <div class="card-row">
+        <span class="card-title" id="loft-count-label">Lofts: 0</span>
+        <div style="display:flex;gap:5px;">
+          <button class="mini-btn" id="btn-reset-plane" title="Reset Plane" style="padding:0 8px;height:28px;">0</button>
+          <button class="mini-btn" id="btn-clear-lofts" title="Clear Lofts" style="padding:0 9px;height:28px;"><svg viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/></svg></button>
+        </div>
+      </div>
+    </div>
+    <div class="pill" id="bottom-bar">
+      <button class="icon-btn" data-cam="iso" title="Iso View"><svg viewBox="0 0 24 24"><path d="m12 2 9 5v10l-9 5-9-5V7l9-5Z"/><path d="m3 7 9 5 9-5"/><path d="M12 12v10"/></svg></button>
+      <button class="icon-btn" data-cam="front" title="Front View"><svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
+      <button class="icon-btn" data-cam="top" title="Top View"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 2v4"/><path d="M12 18v4"/><path d="M2 12h4"/><path d="M18 12h4"/></svg></button>
+      <div class="sep-v"></div>
+      <button class="icon-btn" id="btn-orbit-toggle" title="Orbit"><svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
+    </div>
+    <div class="popover" id="brush-pop">
+      <div class="swatch-strip" id="swatch-strip"></div>
+      <div class="slider-line"><span title="Width">W</span><input type="range" id="slider-width" min="0.012" max="0.16" step="0.002" value="0.034" /><span id="val-width">0.034</span></div>
+      <div class="slider-line"><span title="Opacity">α</span><input type="range" id="slider-opacity" min="0.15" max="1" step="0.01" value="0.96" /><span id="val-opacity">96%</span></div>
+      <div class="brush-list" id="brush-list"></div>
+      <button class="mini-btn" id="btn-import-brush" type="button" style="width:100%;min-height:38px;margin-top:8px">＋ Import brush (PNG / JPG / JSON)</button>
+    </div>
+  </div>
+  <input type="file" id="file-project-input" accept=".json,application/json" style="display:none" />
+  <input type="file" id="file-brush-input" accept="image/png,image/jpeg,image/webp,.json,application/json" style="display:none" />
+  <div id="toast"></div>
+  <div id="error-overlay"><div class="error-box"><strong>Viewport Recovery</strong><pre id="error-message"></pre><button class="retry-btn" id="btn-retry">Reload</button></div></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js" onerror="this.onerror=null;this.src='https://unpkg.com/three@0.128.0/build/three.min.js';"></script>
+  <script>
+    (function loadOrbitControls() {
+      if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') return;
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js';
+      s.onerror = function () {
+        var f = document.createElement('script');
+        f.src = 'https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js';
+        document.head.appendChild(f);
+      };
+      document.head.appendChild(s);
+    })();
+  </script>
+  <script>
+    (function () {
+      'use strict';
+      const AUTOSAVE_KEY = 'sketchin3d_autosave_v3';
+      const CUSTOM_BRUSHES_KEY = 'sketchin3d_custom_brushes_v3';
+      const THEME_KEY = 'sketchin3d_theme_v3';
+      const BUILTIN_BRUSHES = [
+        { id: 'ink', name: 'Ink', style: 'ink', widthScale: 1.0, taperStart: 0.24, taperEnd: 0.22 },
+        { id: 'ribbon', name: 'Ribbon', style: 'ribbon', widthScale: 1.35, taperStart: 0.3, taperEnd: 0.3 },
+        { id: 'calligraphy', name: 'Nib', style: 'calligraphy', widthScale: 1.45, taperStart: 0.38, taperEnd: 0.16 },
+        { id: 'sketch', name: 'Sketch', style: 'sketch', widthScale: 0.92, taperStart: 0.2, taperEnd: 0.2 },
+        { id: 'dash', name: 'Stitch', style: 'dash', widthScale: 1.05, taperStart: 0.22, taperEnd: 0.22 },
+        { id: 'glow', name: 'Glow', style: 'glow', widthScale: 1.15, taperStart: 0.2, taperEnd: 0.2 }
+      ];
+      const SWATCHES = ['#56ccf2', '#ff758f', '#ffd166', '#06d6a0', '#c77dff', '#ff9f1c', '#f8fafc', '#1e293b'];
+      const state = {
+        mode: 'draw', orbitForced: false, fingerPen: true, globalAxisVisible: true, selectedItem: null, selectedKind: null, plane: 'XZ', planeDepth: 0, planeTilt: 0,
+        planeVisible: true, color: '#56ccf2', width: 0.034, opacity: 0.96,
+        brushId: 'ink', customBrushes: [], strokes: [], lofts: [], fills: [],
+        undoStack: [], redoStack: [], theme: localStorage.getItem(THEME_KEY) || 'dark'
+      };
+      let scene, camera, renderer, controls;
+      let studioGroup, strokesGroup, loftsGroup, fillsGroup, guideGroup, previewGroup, globalAxisGroup, selectionHelper;
+      let guideHitMesh, guideGridHelper, floorGridHelper;
+      let ambientLight, keyLight, rimLight;
+      const raycaster = new THREE.Raycaster();
+      const pointerNDC = new THREE.Vector2();
+      const mathPlane = new THREE.Plane();
+      const hitPointTemp = new THREE.Vector3();
+      let activeStrokePointerId = null, activeStrokePoints = [], activeStrokePreviewMesh = null;
+      let activeErasePointerId = null, activeErasedStrokes = [], activeErasedLofts = [];
+      let activeLoftPointerId = null, activeLoftPoints = [], activeLoftPreviewMesh = null;
+      let saveTimer = null, lastPreviewTime = 0;
+
+      function showToast(msg) {
+        const el = document.getElementById('toast');
+        el.textContent = msg; el.classList.add('show');
+        clearTimeout(showToast._t);
+        showToast._t = setTimeout(() => el.classList.remove('show'), 1350);
+      }
+      function showFatalError(err) {
+        document.getElementById('error-message').textContent = (err && (err.stack || err.message)) || String(err);
+        document.getElementById('error-overlay').classList.add('open');
+      }
+      window.addEventListener('error', (ev) => { if (ev && ev.error && !scene) showFatalError(ev.error); });
+      function getAllBrushes() { return BUILTIN_BRUSHES.concat(state.customBrushes); }
+      function getActiveBrush() { return getAllBrushes().find((b) => b.id === state.brushId) || BUILTIN_BRUSHES[0]; }
+      function updatePlaneLabels() {
+        const readout = document.getElementById('plane-readout');
+        if (readout) readout.textContent = `${state.plane} · ${state.planeDepth >= 0 ? '+' : ''}${state.planeDepth.toFixed(2)} · ${state.planeTilt}°`;
+        const loftLbl = document.getElementById('loft-count-label');
+        if (loftLbl) loftLbl.textContent = `Lofts: ${state.lofts.length}`;
+      }
+      function applyTheme(theme) {
+        state.theme = theme === 'light' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', state.theme);
+        try { localStorage.setItem(THEME_KEY, state.theme); } catch (_) {}
+        const isLight = state.theme === 'light';
+        document.getElementById('theme-icon-sun').style.display = isLight ? 'block' : 'none';
+        document.getElementById('theme-icon-moon').style.display = isLight ? 'none' : 'block';
+        if (!scene || !renderer) return;
+        scene.background = new THREE.Color(isLight ? 0xf2f5fa : 0x141b2d);
+        scene.fog = new THREE.FogExp2(isLight ? 0xf2f5fa : 0x141b2d, 0.02);
+        if (floorGridHelper) { floorGridHelper.material.color.setHex(isLight ? 0x94a3b8 : 0x4b6288); floorGridHelper.material.opacity = 0.24; }
+        if (ambientLight) { ambientLight.color.setHex(isLight ? 0xffffff : 0x9bb4e5); ambientLight.intensity = isLight ? 0.96 : 0.74; }
+        if (keyLight) keyLight.intensity = isLight ? 0.88 : 1.05;
+        if (rimLight) { rimLight.color.setHex(isLight ? 0x3b82f6 : 0x7aa8ff); rimLight.intensity = isLight ? 0.42 : 0.65; }
+        updateGuideVisuals();
+      }
+      function makeTextureFromDataUrl(dataUrl) {
+        const tex = new THREE.Texture(), img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => { tex.image = img; tex.needsUpdate = true; };
+        img.src = dataUrl; tex.wrapS = THREE.RepeatWrapping; tex.wrapT = THREE.RepeatWrapping;
+        return tex;
+      }
+      function createBrushIconSvg(style) {
+        if (style === 'ribbon') return '<svg viewBox="0 0 24 24"><path d="M3 15c4-7 14-7 18 0"/><path d="M3 10c4-7 14-7 18 0"/></svg>';
+        if (style === 'calligraphy') return '<svg viewBox="0 0 24 24"><path d="M4 18 19 5"/><path d="M7 20 20 8"/></svg>';
+        if (style === 'sketch') return '<svg viewBox="0 0 24 24"><path d="m3 16 6-6 4 4 8-8"/><path d="m14 6 7 0 0 7"/></svg>';
+        if (style === 'dash') return '<svg viewBox="0 0 24 24"><path d="M3 12h4"/><path d="M10 12h4"/><path d="M17 12h4"/></svg>';
+        if (style === 'glow') return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M3 12h5"/><path d="M16 12h5"/></svg>';
+        return '<svg viewBox="0 0 24 24"><path d="M3 17c5-10 13 10 18-4"/></svg>';
+      }
+      function renderBrushList() {
+        const list = document.getElementById('brush-list'); list.innerHTML = '';
+        for (const b of getAllBrushes()) {
+          const btn = document.createElement('button');
+          btn.className = 'brush-item' + (b.id === state.brushId ? ' active' : '');
+          btn.title = b.name; btn.type = 'button';
+          if (b.imageData) { const img = document.createElement('img'); img.src = b.imageData; img.alt = b.name; btn.appendChild(img); }
+          else { const wrap = document.createElement('div'); wrap.innerHTML = createBrushIconSvg(b.style); btn.appendChild(wrap.firstChild); }
+          const label = document.createElement('span'); label.className = 'brush-name'; label.textContent = b.name; btn.appendChild(label);
+          btn.addEventListener('click', () => { state.brushId = b.id; renderBrushList(); scheduleAutosave(); });
+          list.appendChild(btn);
+        }
+      }
+      function renderSwatches() {
+        const strip = document.getElementById('swatch-strip'); strip.innerHTML = '';
+        for (const hex of SWATCHES) {
+          const dot = document.createElement('button'); dot.type = 'button';
+          dot.className = 'swatch' + (state.color.toLowerCase() === hex.toLowerCase() ? ' active' : '');
+          dot.style.background = hex; dot.addEventListener('click', () => { setColor(hex); renderSwatches(); }); strip.appendChild(dot);
+        }
+        const picker = document.createElement('input'); picker.type = 'color';
+        picker.value = /^#[0-9a-fA-F]{6}$/.test(state.color) ? state.color : '#56ccf2';
+        picker.title = 'Custom Color';
+        picker.addEventListener('input', (e) => { setColor(e.target.value); renderSwatches(); });
+        strip.appendChild(picker);
+      }
+      function setColor(hex) { state.color = hex; document.getElementById('active-color-dot').style.background = hex; scheduleAutosave(); }
+
+      function buildSpatialStrokeGeometry(rawPoints, baseRadius, opacity, brush) {
+        if (!rawPoints || rawPoints.length < 2) return null;
+        const cleaned = [];
+        for (let i = 0; i < rawPoints.length; i++) {
+          const p = rawPoints[i].pos;
+          if (!p || !Number.isFinite(p.x) || !Number.isFinite(p.y) || !Number.isFinite(p.z)) continue;
+          if (!cleaned.length || cleaned[cleaned.length - 1].pos.distanceToSquared(p) > 1e-8) {
+            cleaned.push({ pos: p.clone(), pressure: THREE.MathUtils.clamp(Number(rawPoints[i].pressure) || 0.65, 0.25, 1) });
+          }
+        }
+        if (cleaned.length < 2) return null;
+        // A light positional filter removes finger jitter before spline interpolation.
+        // Keep endpoints fixed so the rendered stroke still meets the user's touch path.
+        // Gentle five-sample smoothing reduces finger jitter without flattening tight turns.
+        const smoothPoints = cleaned.map((item, i) => {
+          if (i === 0 || i === cleaned.length - 1) return item.pos.clone();
+          if (i === 1 || i === cleaned.length - 2) {
+            return cleaned[i - 1].pos.clone().multiplyScalar(0.14)
+              .addScaledVector(item.pos, 0.72)
+              .addScaledVector(cleaned[i + 1].pos, 0.14);
+          }
+          return cleaned[i - 2].pos.clone().multiplyScalar(0.06)
+            .addScaledVector(cleaned[i - 1].pos, 0.18)
+            .addScaledVector(item.pos, 0.52)
+            .addScaledVector(cleaned[i + 1].pos, 0.18)
+            .addScaledVector(cleaned[i + 2].pos, 0.06);
+        });
+        const curve = new THREE.CatmullRomCurve3(smoothPoints, false, 'centripetal', 0.5);
+        const totalLen = curve.getLength();
+        if (!Number.isFinite(totalLen) || totalLen < 1e-4) return null;
+        const style = brush ? brush.style : 'ink';
+        const widthScale = brush && Number.isFinite(brush.widthScale) ? brush.widthScale : 1;
+        const segments = Math.min(480, Math.max(24, Math.ceil(totalLen * 110)));
+        const radialSegments = style === 'ribbon' ? 6 : 10;
+        const frames = curve.computeFrenetFrames(segments, false);
+        const positions = [], uvs = [], indices = [];
+        for (let i = 0; i <= segments; i++) {
+          const t = i / segments;
+          const pt = curve.getPointAt(t);
+          const sample = t * (cleaned.length - 1), i0 = Math.floor(sample);
+          const i1 = Math.min(cleaned.length - 1, i0 + 1), f = sample - i0;
+          const pressure = THREE.MathUtils.lerp(cleaned[i0].pressure, cleaned[i1].pressure, f);
+          let taper = 1;
+          const edge = Math.min(1, t / 0.08, (1 - t) / 0.08);
+          taper = 0.72 + 0.28 * THREE.MathUtils.smoothstep(edge, 0, 1);
+          let radius = Math.max(0.0018, baseRadius * widthScale * (0.78 + pressure * 0.32) * taper);
+          if (style === 'calligraphy') radius *= 0.82 + 0.18 * Math.abs(Math.sin(t * Math.PI * 2));
+          if (style === 'sketch') radius *= 0.94 + 0.06 * Math.sin(i * 1.7);
+          for (let j = 0; j <= radialSegments; j++) {
+            const a = (j / radialSegments) * Math.PI * 2;
+            const normal = frames.normals[i].clone().multiplyScalar(Math.cos(a));
+            const binormal = frames.binormals[i].clone().multiplyScalar(Math.sin(a));
+            const v = pt.clone().addScaledVector(normal, radius).addScaledVector(binormal, radius);
+            positions.push(v.x, v.y, v.z);
+            uvs.push(t, j / radialSegments);
+          }
+        }
+        const ring = radialSegments + 1;
+        for (let i = 0; i < segments; i++) for (let j = 0; j < radialSegments; j++) {
+          const a = i * ring + j, b = (i + 1) * ring + j, c = b + 1, d = a + 1;
+          indices.push(a, b, d, b, c, d);
+        }
+        // Add small spherical end caps so strokes terminate smoothly instead of looking cut off.
+        const appendCap = (center, radius) => {
+          const cap = new THREE.SphereGeometry(radius, 12, 8);
+          cap.translate(center.x, center.y, center.z);
+          const capPos = cap.getAttribute('position');
+          const offset = positions.length / 3;
+          for (let k = 0; k < capPos.count; k++) positions.push(capPos.getX(k), capPos.getY(k), capPos.getZ(k));
+          const capUv = cap.getAttribute('uv');
+          for (let k = 0; k < capUv.count; k++) uvs.push(capUv.getX(k), capUv.getY(k));
+          const capIndex = cap.getIndex();
+          if (capIndex) for (let k = 0; k < capIndex.count; k++) indices.push(offset + capIndex.getX(k));
+          cap.dispose();
+        };
+        const startRadius = Math.max(0.0018, baseRadius * widthScale * (0.78 + cleaned[0].pressure * 0.32) * 0.72);
+        const endRadius = Math.max(0.0018, baseRadius * widthScale * (0.78 + cleaned[cleaned.length - 1].pressure * 0.32) * 0.72);
+        appendCap(curve.getPointAt(0), startRadius);
+        appendCap(curve.getPointAt(1), endRadius);
+        const geo = new THREE.BufferGeometry();
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geo.setIndex(indices); geo.computeVertexNormals();
+        geo.computeBoundingSphere();
+        return geo;
+      }
+      function createStrokeMaterial(colorHex, opacity, brush) {
+        const style = brush ? brush.style : 'ink';
+        const opts = { color: new THREE.Color(colorHex), transparent: true, opacity, side: THREE.DoubleSide,
+          depthWrite: style !== 'glow', roughness: 0.72, metalness: 0.04 };
+        if (brush && brush.imageData) { opts.map = makeTextureFromDataUrl(brush.imageData); opts.alphaTest = 0.05; }
+        if (style === 'glow') return new THREE.MeshBasicMaterial({ color: new THREE.Color(colorHex), transparent: true,
+          opacity: Math.min(1, opacity * 0.92), side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false });
+        return new THREE.MeshStandardMaterial(opts);
+      }
+      function addStrokeToScene(strokeData) {
+        if (strokeData.mesh) return strokeData.mesh;
+        const brush = getAllBrushes().find((b) => b.id === strokeData.brushId) || BUILTIN_BRUSHES[0];
+        const geo = buildSpatialStrokeGeometry(strokeData.points, strokeData.width, strokeData.opacity, brush);
+        if (!geo) return null;
+        const mesh = new THREE.Mesh(geo, createStrokeMaterial(strokeData.color, strokeData.opacity, brush));
+        mesh.userData.strokeId = strokeData.id; strokesGroup.add(mesh); strokeData.mesh = mesh; return mesh;
+      }
+      function removeStrokeFromScene(strokeData) {
+        if (!strokeData || !strokeData.mesh) return;
+        strokesGroup.remove(strokeData.mesh);
+        if (strokeData.mesh.geometry) strokeData.mesh.geometry.dispose();
+        if (strokeData.mesh.material) { if (strokeData.mesh.material.map) strokeData.mesh.material.map.dispose(); strokeData.mesh.material.dispose(); }
+        strokeData.mesh = null;
+      }
+      function rebuildStrokeMesh(strokeData) { removeStrokeFromScene(strokeData); addStrokeToScene(strokeData); }
+
+      function buildLoftGeometry(rawPoints) {
+        if (!rawPoints || rawPoints.length < 2) return null;
+        const pts = [];
+        for (const p of rawPoints) if (pts.length === 0 || pts[pts.length - 1].distanceToSquared(p) > 1e-6) pts.push(p.clone());
+        if (pts.length < 2) return null;
+        const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.45), len = curve.getLength();
+        if (len < 1e-4) return null;
+        const normal = getActivePlaneNormal(), extrudeHeight = Math.max(1.2, Math.min(2.4, len * 0.75));
+        const segs = Math.min(96, Math.max(12, Math.ceil(len * 32))), vSegs = 4;
+        const positions = [], indices = [];
+        for (let i = 0; i <= segs; i++) {
+          const basePt = curve.getPointAt(i / segs);
+          for (let j = 0; j <= vSegs; j++) {
+            const pos = basePt.clone().addScaledVector(normal, (j / vSegs) * extrudeHeight);
+            positions.push(pos.x, pos.y, pos.z);
+          }
+        }
+        const stride = vSegs + 1;
+        for (let i = 0; i < segs; i++) for (let j = 0; j < vSegs; j++) {
+          const a = i * stride + j, b = (i + 1) * stride + j, c = (i + 1) * stride + j + 1, d = i * stride + j + 1;
+          indices.push(a, b, d, b, c, d);
+        }
+        const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setIndex(indices); geo.computeVertexNormals(); return geo;
+      }
+      function createLoftMaterial(isPreview) {
+        return new THREE.MeshBasicMaterial({ color: isPreview ? 0xa855f7 : 0x8b5cf6, transparent: true,
+          opacity: isPreview ? 0.24 : 0.17, side: THREE.DoubleSide, depthWrite: false });
+      }
+      function addLoftToScene(loftData) {
+        if (loftData.mesh) return loftData.mesh;
+        const geo = buildLoftGeometry(loftData.points); if (!geo) return null;
+        const mesh = new THREE.Mesh(geo, createLoftMaterial(false));
+        mesh.userData.isLoftGuide = true; mesh.userData.loftId = loftData.id;
+        loftsGroup.add(mesh); loftData.mesh = mesh; updatePlaneLabels(); return mesh;
+      }
+      function removeLoftFromScene(loftData) {
+        if (!loftData || !loftData.mesh) return;
+        loftsGroup.remove(loftData.mesh);
+        if (loftData.mesh.geometry) loftData.mesh.geometry.dispose();
+        if (loftData.mesh.material) loftData.mesh.material.dispose();
+        loftData.mesh = null; updatePlaneLabels();
+      }
+      function getPlaneBasis() {
+        const normal = getActivePlaneNormal();
+        const u = Math.abs(normal.y) > 0.9 ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+        u.addScaledVector(normal, -u.dot(normal)).normalize();
+        const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+        return { normal, u, v };
+      }
+      function projectToPlane(point, origin, u, v) {
+        const d = point.clone().sub(origin);
+        return { x: d.dot(u), y: d.dot(v) };
+      }
+      function pointInPolygon(point, polygon) {
+        let inside = false;
+        for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+          const a = polygon[i], b = polygon[j];
+          const crosses = ((a.y > point.y) !== (b.y > point.y)) &&
+            (point.x < (b.x - a.x) * (point.y - a.y) / ((b.y - a.y) || 1e-9) + a.x);
+          if (crosses) inside = !inside;
+        }
+        return inside;
+      }
+      function getStrokePlaneFrame(points) {
+        const origin = points[0].clone();
+        let normal = new THREE.Vector3();
+        for (let i = 1; i < points.length - 1; i++) {
+          const a = points[i].clone().sub(origin), b = points[i + 1].clone().sub(origin);
+          normal.crossVectors(a, b);
+          if (normal.lengthSq() > 1e-10) break;
+        }
+        if (normal.lengthSq() <= 1e-10) normal.copy(getActivePlaneNormal());
+        normal.normalize();
+        let u = points[1].clone().sub(origin);
+        u.addScaledVector(normal, -u.dot(normal));
+        if (u.lengthSq() < 1e-10) u.set(1, 0, 0).addScaledVector(normal, -normal.x);
+        u.normalize();
+        const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+        return { origin, normal, u, v };
+      }
+      function makeFillMesh(fill) {
+        if (fill.mesh) return fill.mesh;
+        if (!fill.points || fill.points.length < 3) return null;
+        const frame = getStrokePlaneFrame(fill.points);
+        const coords = fill.points.map(p => projectToPlane(p, frame.origin, frame.u, frame.v));
+        const shape = new THREE.Shape(); shape.moveTo(coords[0].x, coords[0].y);
+        for (let i = 1; i < coords.length; i++) shape.lineTo(coords[i].x, coords[i].y);
+        shape.closePath();
+        const geo = new THREE.ShapeGeometry(shape, 4), pos = geo.getAttribute('position');
+        for (let i = 0; i < pos.count; i++) {
+          const world = frame.origin.clone().addScaledVector(frame.u, pos.getX(i)).addScaledVector(frame.v, pos.getY(i)).addScaledVector(frame.normal, 0.006);
+          pos.setXYZ(i, world.x, world.y, world.z);
+        }
+        geo.computeVertexNormals();
+        const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: fill.color, side: THREE.DoubleSide, transparent: true, opacity: 0.88, depthWrite: false }));
+        mesh.userData.fillId = fill.id; fillsGroup.add(mesh); fill.mesh = mesh; return mesh;
+      }
+      function bucketFillAt(clientX, clientY) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        if (!rect.width || !rect.height) return;
+        const tap = { x: clientX - rect.left, y: clientY - rect.top };
+        const toScreen = (p) => {
+          const q = p.clone().project(camera);
+          return { x: (q.x * 0.5 + 0.5) * rect.width, y: (-q.y * 0.5 + 0.5) * rect.height, z: q.z };
+        };
+        for (let i = state.strokes.length - 1; i >= 0; i--) {
+          const stroke = state.strokes[i];
+          if (!stroke.points || stroke.points.length < 8) continue;
+          const pts = stroke.points.map(p => p.pos);
+          const screen = pts.map(toScreen);
+          if (screen.some(p => p.z < -1 || p.z > 1)) continue;
+          const first = screen[0], last = screen[screen.length - 1];
+          const gap = Math.hypot(first.x - last.x, first.y - last.y);
+          // Finger-drawn loops are considered closed when their visible endpoints are within 36 px.
+          if (gap > 36) continue;
+          const polygon = screen.map(p => ({ x: p.x, y: p.y }));
+          // Close the small visible gap with a direct final segment.
+          if (gap > 0.5) polygon.push({ x: first.x, y: first.y });
+          if (!pointInPolygon(tap, polygon)) continue;
+          const existing = state.fills.find(f => f.boundaryId === stroke.id);
+          if (existing) {
+            if (existing.color.toLowerCase() === state.color.toLowerCase()) { showToast('Already filled'); return; }
+            const before = existing.color; existing.color = state.color;
+            if (existing.mesh) existing.mesh.material.color.set(state.color);
+            pushUndo({ type: 'fill-color', fill: existing, before, after: state.color });
+          } else {
+            const fill = { id: 'fill_' + Date.now(), boundaryId: stroke.id, points: pts.map(p => p.clone()), color: state.color, mesh: null };
+            state.fills.push(fill); makeFillMesh(fill); pushUndo({ type: 'fill-add', fill });
+          }
+          showToast('Area filled'); return;
+        }
+        showToast('Tap inside a closed outline');
+      }
+      function removeFillFromScene(fill) {
+        if (!fill || !fill.mesh) return;
+        fillsGroup.remove(fill.mesh); fill.mesh.geometry.dispose(); fill.mesh.material.dispose(); fill.mesh = null;
+      }
+      function bucketFillAt(clientX, clientY) {
+        const hitPoint = raycastGuideOrPlane(clientX, clientY, false);
+        if (!hitPoint) { showToast('Tap inside a closed outline'); return; }
+        const basis = getPlaneBasis();
+        for (let i = state.strokes.length - 1; i >= 0; i--) {
+          const stroke = state.strokes[i];
+          if (!stroke.points || stroke.points.length < 4) continue;
+          const pts = stroke.points.map(p => p.pos);
+          const origin = pts[0];
+          const polygon = pts.map(p => projectToPlane(p, origin, basis.u, basis.v));
+          const first = pts[0], last = pts[pts.length - 1];
+          let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+          for (const q of polygon) { minX = Math.min(minX, q.x); minY = Math.min(minY, q.y); maxX = Math.max(maxX, q.x); maxY = Math.max(maxY, q.y); }
+          const diagonal = Math.hypot(maxX - minX, maxY - minY);
+          // Finger-drawn outlines rarely land on the exact starting pixel.
+          // Allow a modest closing gap, scaled for the size of the shape.
+          const closeTolerance = Math.max(0.18, diagonal * 0.11, state.width * 4);
+          if (first.distanceTo(last) > closeTolerance) continue;
+          const sample = projectToPlane(hitPoint, origin, basis.u, basis.v);
+          if (!pointInPolygon(sample, polygon)) continue;
+          const existing = state.fills.find(f => f.boundaryId === stroke.id);
+          if (existing) {
+            if (existing.color.toLowerCase() === state.color.toLowerCase()) { showToast('Already filled'); return; }
+            const before = existing.color; existing.color = state.color;
+            if (existing.mesh) existing.mesh.material.color.set(state.color);
+            pushUndo({ type: 'fill-color', fill: existing, before, after: state.color });
+          } else {
+            const fill = { id: 'fill_' + Date.now(), boundaryId: stroke.id, points: pts.map(p => p.clone()), color: state.color, mesh: null };
+            state.fills.push(fill); makeFillMesh(fill); pushUndo({ type: 'fill-add', fill });
+          }
+          showToast('Area filled'); return;
+        }
+        showToast('No closed outline under tap');
+      }
+      function getActivePlaneNormal() {
+        const n = new THREE.Vector3(0, 1, 0);
+        if (state.plane === 'XY') n.set(0, 0, 1);
+        if (state.plane === 'YZ') n.set(1, 0, 0);
+        if (state.planeTilt !== 0) {
+          const axis = state.plane === 'XZ' ? new THREE.Vector3(1, 0, 0) : new THREE.Vector3(0, 1, 0);
+          n.applyAxisAngle(axis, THREE.MathUtils.degToRad(state.planeTilt)).normalize();
+        }
+        return n;
+      }
+      function makeAxisLabel(letter, color) {
+        const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128;
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, 128, 128);
+        ctx.fillStyle = color; ctx.font = '700 76px system-ui, sans-serif';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(letter, 64, 66);
+        const texture = new THREE.CanvasTexture(canvas); texture.needsUpdate = true;
+        const material = new THREE.SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false });
+        const sprite = new THREE.Sprite(material); sprite.scale.set(0.34, 0.34, 0.34); sprite.renderOrder = 1001;
+        return sprite;
+      }
+      function createGlobalAxis() {
+        globalAxisGroup = new THREE.Group();
+        const axes = new THREE.AxesHelper(2.5);
+        axes.renderOrder = 1000;
+        if (Array.isArray(axes.material)) axes.material.forEach((m) => { m.depthTest = false; m.depthWrite = false; });
+        else { axes.material.depthTest = false; axes.material.depthWrite = false; }
+        globalAxisGroup.add(axes);
+        const x = makeAxisLabel('X', '#ff626f'); x.position.set(2.78, 0, 0);
+        const y = makeAxisLabel('Y', '#55d68b'); y.position.set(0, 2.78, 0);
+        const z = makeAxisLabel('Z', '#5c9dff'); z.position.set(0, 0, 2.78);
+        globalAxisGroup.add(x, y, z);
+        globalAxisGroup.visible = state.globalAxisVisible;
+        scene.add(globalAxisGroup);
+      }
+      function setGlobalAxisVisible(visible) {
+        state.globalAxisVisible = !!visible;
+        if (globalAxisGroup) globalAxisGroup.visible = state.globalAxisVisible;
+        const btn = document.getElementById('btn-global-axis');
+        if (btn) {
+          btn.classList.toggle('active', state.globalAxisVisible);
+          btn.textContent = state.globalAxisVisible ? 'XYZ ON' : 'XYZ OFF';
+          btn.setAttribute('aria-pressed', String(state.globalAxisVisible));
+        }
+        scheduleAutosave();
+      }
+      function updateGuideVisuals() {
+        updatePlaneLabels(); if (!guideGroup || !guideHitMesh || !guideGridHelper) return;
+        guideGroup.visible = state.planeVisible; guideGroup.position.set(0, 0, 0); guideGroup.rotation.set(0, 0, 0);
+        if (state.plane === 'XZ') { guideGroup.position.set(0, state.planeDepth, 0); guideGroup.rotation.x = THREE.MathUtils.degToRad(state.planeTilt); }
+        else if (state.plane === 'XY') { guideGroup.position.set(0, 0, state.planeDepth); guideGroup.rotation.x = Math.PI / 2; guideGroup.rotation.y = THREE.MathUtils.degToRad(state.planeTilt); }
+        else if (state.plane === 'YZ') { guideGroup.position.set(state.planeDepth, 0, 0); guideGroup.rotation.z = -Math.PI / 2; guideGroup.rotation.x = THREE.MathUtils.degToRad(state.planeTilt); }
+        const isLight = state.theme === 'light'; guideGridHelper.material.color.setHex(isLight ? 0x2563eb : 0x689bff);
+        guideGridHelper.material.opacity = isLight ? 0.34 : 0.32;
+      }
+      function setPlane(planeName) {
+        state.plane = planeName;
+        document.querySelectorAll('#guides-card [data-plane]').forEach((btn) => btn.classList.toggle('active', btn.dataset.plane === planeName));
+        updateGuideVisuals(); scheduleAutosave();
+      }
+      function setMode(newMode) {
+        state.mode = newMode; state.orbitForced = false;
+        document.getElementById('btn-orbit-toggle').classList.remove('active');
+        document.querySelectorAll('#left-rail [data-mode]').forEach((btn) => btn.classList.toggle('active', btn.dataset.mode === newMode));
+        updateOrbitControlsForMode(); showToast(newMode.charAt(0).toUpperCase() + newMode.slice(1));
+      }
+      function updateOrbitControlsForMode() {
+        if (!controls) return;
+        controls.enabled = true;
+        controls.mouseButtons = { LEFT: state.orbitForced ? THREE.MOUSE.ROTATE : null, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.ROTATE };
+        // Feather-inspired touch navigation: one finger draws in Finger-Pen mode;
+        // otherwise one finger orbits. Two fingers always pan and pinch-zoom.
+        controls.touches = { ONE: (state.orbitForced || !state.fingerPen) ? THREE.TOUCH.ROTATE : null, TWO: THREE.TOUCH.DOLLY_PAN };
+      }
+      function pushUndo(action) { state.undoStack.push(action); state.redoStack = []; syncHistoryButtons(); scheduleAutosave(); }
+      function syncHistoryButtons() {
+        document.getElementById('btn-undo').disabled = state.undoStack.length === 0;
+        document.getElementById('btn-redo').disabled = state.redoStack.length === 0;
+      }
+      function undo() {
+        const action = state.undoStack.pop(); if (!action) return;
+        if (action.type === 'fill-add') { removeFillFromScene(action.fill); state.fills = state.fills.filter(f => f.id !== action.fill.id); }
+        else if (action.type === 'fill-color') { action.fill.color = action.before; if (action.fill.mesh) action.fill.mesh.material.color.set(action.before); }
+        else if (action.type === 'stroke') { removeStrokeFromScene(action.stroke); state.strokes = state.strokes.filter((s) => s.id !== action.stroke.id); }
+        else if (action.type === 'loft') { removeLoftFromScene(action.loft); state.lofts = state.lofts.filter((l) => l.id !== action.loft.id); }
+        else if (action.type === 'erase') {
+          for (const st of action.erasedStrokes) { if (!state.strokes.some((x) => x.id === st.id)) state.strokes.push(st); addStrokeToScene(st); }
+          for (const lf of action.erasedLofts) { if (!state.lofts.some((x) => x.id === lf.id)) state.lofts.push(lf); addLoftToScene(lf); }
+        } else if (action.type === 'transform') applyItemPointSnapshot(action.item, action.kind, action.before);
+        else if (action.type === 'bucket') for (const item of action.changes) { item.stroke.color = item.prevColor; rebuildStrokeMesh(item.stroke); }
+        else if (action.type === 'clear') {
+          state.strokes = action.prevStrokes.slice(); state.lofts = action.prevLofts.slice(); state.fills = (action.prevFills || []).slice();
+          for (const st of state.strokes) addStrokeToScene(st); for (const lf of state.lofts) addLoftToScene(lf); for (const f of state.fills) makeFillMesh(f);
+        }
+        updatePlaneLabels(); state.redoStack.push(action); syncHistoryButtons(); scheduleAutosave(); showToast('Undo');
+      }
+      function redo() {
+        const action = state.redoStack.pop(); if (!action) return;
+        if (action.type === 'fill-add') { if (!state.fills.some(f => f.id === action.fill.id)) state.fills.push(action.fill); makeFillMesh(action.fill); }
+        else if (action.type === 'fill-color') { action.fill.color = action.after; if (action.fill.mesh) action.fill.mesh.material.color.set(action.after); }
+        else if (action.type === 'stroke') { if (!state.strokes.some((s) => s.id === action.stroke.id)) state.strokes.push(action.stroke); addStrokeToScene(action.stroke); }
+        else if (action.type === 'loft') { if (!state.lofts.some((l) => l.id === action.loft.id)) state.lofts.push(action.loft); addLoftToScene(action.loft); }
+        else if (action.type === 'erase') {
+          for (const st of action.erasedStrokes) { removeStrokeFromScene(st); state.strokes = state.strokes.filter((x) => x.id !== st.id); }
+          for (const lf of action.erasedLofts) { removeLoftFromScene(lf); state.lofts = state.lofts.filter((x) => x.id !== lf.id); }
+        } else if (action.type === 'transform') applyItemPointSnapshot(action.item, action.kind, action.after);
+        else if (action.type === 'bucket') for (const item of action.changes) { item.stroke.color = item.nextColor; rebuildStrokeMesh(item.stroke); }
+        else if (action.type === 'clear') {
+          for (const st of state.strokes) removeStrokeFromScene(st); for (const lf of state.lofts) removeLoftFromScene(lf); for (const f of state.fills) removeFillFromScene(f);
+          state.strokes = []; state.lofts = []; state.fills = [];
+        }
+        updatePlaneLabels(); state.undoStack.push(action); syncHistoryButtons(); scheduleAutosave(); showToast('Redo');
+      }
+      function clearAll() {
+        if (!state.strokes.length && !state.lofts.length && !state.fills.length) return;
+        const prevStrokes = state.strokes.slice(), prevLofts = state.lofts.slice(), prevFills = state.fills.slice();
+        pushUndo({ type: 'clear', prevStrokes, prevLofts, prevFills });
+        for (const st of state.strokes) removeStrokeFromScene(st); for (const lf of state.lofts) removeLoftFromScene(lf); for (const f of state.fills) removeFillFromScene(f);
+        state.strokes = []; state.lofts = []; state.fills = []; state.selectedItem = null; state.selectedKind = null; clearSelectionHelper(); updatePlaneLabels(); showToast('Cleared');
+      }
+      function raycastGuideOrPlane(clientX, clientY, preferLofts) {
+        const rect = renderer.domElement.getBoundingClientRect(); if (rect.width <= 0 || rect.height <= 0) return null;
+        pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1; pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointerNDC, camera);
+        if (preferLofts && loftsGroup.children.length) { const hits = raycaster.intersectObjects(loftsGroup.children, false); if (hits.length) return hits[0].point.clone(); }
+        if (state.planeVisible && guideHitMesh) { const hits = raycaster.intersectObject(guideHitMesh, false); if (hits.length) return hits[0].point.clone(); }
+        const normal = getActivePlaneNormal(), ptOnPlane = new THREE.Vector3();
+        if (state.plane === 'XZ') ptOnPlane.set(0, state.planeDepth, 0);
+        else if (state.plane === 'XY') ptOnPlane.set(0, 0, state.planeDepth); else ptOnPlane.set(state.planeDepth, 0, 0);
+        mathPlane.setFromNormalAndCoplanarPoint(normal, ptOnPlane);
+        if (raycaster.ray.intersectPlane(mathPlane, hitPointTemp)) return hitPointTemp.clone();
+        return null;
+      }
+      function hitTestStrokeOrLoft(clientX, clientY) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        pointerNDC.x = ((clientX - rect.left) / rect.width) * 2 - 1; pointerNDC.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+        raycaster.setFromCamera(pointerNDC, camera);
+        const strokeHits = raycaster.intersectObjects(strokesGroup.children, false);
+        if (strokeHits.length) { const stroke = state.strokes.find((s) => s.id === strokeHits[0].object.userData.strokeId); if (stroke) return { kind: 'stroke', item: stroke }; }
+        const loftHits = raycaster.intersectObjects(loftsGroup.children, false);
+        if (loftHits.length) { const loft = state.lofts.find((l) => l.id === loftHits[0].object.userData.loftId); if (loft) return { kind: 'loft', item: loft }; }
+        return null;
+      }
+      function clearSelectionHelper() {
+        if (!selectionHelper) return;
+        scene.remove(selectionHelper);
+        if (selectionHelper.geometry) selectionHelper.geometry.dispose();
+        if (selectionHelper.material) selectionHelper.material.dispose();
+        selectionHelper = null;
+      }
+      function refreshSelectionHelper() {
+        clearSelectionHelper();
+        const item = state.selectedItem;
+        if (!item || !item.mesh || !scene) return;
+        selectionHelper = new THREE.BoxHelper(item.mesh, 0x38bdf8);
+        selectionHelper.material.depthTest = false;
+        selectionHelper.material.transparent = true;
+        selectionHelper.material.opacity = 0.95;
+        selectionHelper.renderOrder = 1002;
+        scene.add(selectionHelper);
+        selectionHelper.update();
+      }
+      function getItemPoints(item, kind) { return kind === 'stroke' ? item.points.map(p => p.pos.clone()) : item.points.map(p => p.clone()); }
+      function applyItemPointSnapshot(item, kind, points) {
+        if (kind === 'stroke') item.points = points.map((pos, i) => ({ pos: pos.clone(), pressure: item.points[i]?.pressure ?? 0.65 }));
+        else item.points = points.map(p => p.clone());
+        if (kind === 'stroke') rebuildStrokeMesh(item); else { removeLoftFromScene(item); addLoftToScene(item); }
+        if (item === state.selectedItem) refreshSelectionHelper();
+      }
+      function transformSelected(action) {
+        const item = state.selectedItem, kind = state.selectedKind;
+        if (!item || !kind) { showToast('Select a stroke or loft first'); return; }
+        const before = getItemPoints(item, kind), after = before.map(p => p.clone());
+        const center = new THREE.Vector3(); after.forEach(p => center.add(p)); center.multiplyScalar(1 / after.length);
+        if (action === 'left') after.forEach(p => p.x -= 0.25);
+        else if (action === 'right') after.forEach(p => p.x += 0.25);
+        else if (action === 'up') after.forEach(p => p.y += 0.25);
+        else if (action === 'down') after.forEach(p => p.y -= 0.25);
+        else if (action === 'forward') after.forEach(p => p.z -= 0.25);
+        else if (action === 'back') after.forEach(p => p.z += 0.25);
+        else if (action === 'rotate-left' || action === 'rotate-right') {
+          const angle = (action === 'rotate-left' ? 1 : -1) * Math.PI / 12;
+          after.forEach(p => p.sub(center).applyAxisAngle(new THREE.Vector3(0,1,0), angle).add(center));
+        } else if (action === 'scale-up' || action === 'scale-down') {
+          const factor = action === 'scale-up' ? 1.1 : 1 / 1.1;
+          after.forEach(p => p.sub(center).multiplyScalar(factor).add(center));
+        }
+        applyItemPointSnapshot(item, kind, after);
+        pushUndo({ type: 'transform', item, kind, before, after });
+        showToast(action.startsWith('rotate') ? 'Rotated 15°' : action.startsWith('scale') ? 'Scaled' : 'Moved');
+      }
+      function closeAllPopovers() { document.getElementById('brush-pop').classList.remove('open'); }
+      function screenDistanceToPolyline(clientX, clientY, points) {
+        const rect = renderer.domElement.getBoundingClientRect();
+        if (!rect.width || !rect.height || !points || points.length < 2) return Infinity;
+        const projected = [];
+        for (const value of points) {
+          const v = (value.pos ? value.pos : value).clone().project(camera);
+          if (v.z < -1 || v.z > 1) { projected.push(null); continue; }
+          projected.push({ x: rect.left + (v.x * 0.5 + 0.5) * rect.width, y: rect.top + (-v.y * 0.5 + 0.5) * rect.height });
+        }
+        let best = Infinity;
+        for (let i = 1; i < projected.length; i++) {
+          const a = projected[i - 1], b = projected[i]; if (!a || !b) continue;
+          const dx = b.x - a.x, dy = b.y - a.y, len2 = dx * dx + dy * dy;
+          const t = len2 ? THREE.MathUtils.clamp(((clientX-a.x)*dx + (clientY-a.y)*dy) / len2, 0, 1) : 0;
+          best = Math.min(best, Math.hypot(clientX - (a.x + t*dx), clientY - (a.y + t*dy)));
+        }
+        return best;
+      }
+      function eraseAt(clientX, clientY) {
+        const radius = 17; // forgiving finger-sized eraser target
+        for (let i = state.strokes.length - 1; i >= 0; i--) {
+          const item = state.strokes[i];
+          if (activeErasedStrokes.some(x => x.id === item.id)) continue;
+          if (screenDistanceToPolyline(clientX, clientY, item.points) <= radius) {
+            removeStrokeFromScene(item); state.strokes = state.strokes.filter(x => x.id !== item.id); activeErasedStrokes.push(item);
+          }
+        }
+        for (let i = state.lofts.length - 1; i >= 0; i--) {
+          const item = state.lofts[i];
+          if (activeErasedLofts.some(x => x.id === item.id)) continue;
+          if (screenDistanceToPolyline(clientX, clientY, item.points) <= radius) {
+            removeLoftFromScene(item); state.lofts = state.lofts.filter(x => x.id !== item.id); activeErasedLofts.push(item);
+          }
+        }
+      }
+      function finishEraseGesture() {
+        if (activeErasedStrokes.length || activeErasedLofts.length) {
+          pushUndo({ type: 'erase', erasedStrokes: activeErasedStrokes.slice(), erasedLofts: activeErasedLofts.slice() });
+          showToast('Erased');
+        }
+        activeErasePointerId = null; activeErasedStrokes = []; activeErasedLofts = [];
+      }
+      function onPointerDown(e) {
+        if (e.target !== renderer.domElement) return;
+        closeAllPopovers();
+        if (activeStrokePointerId !== null && e.pointerId !== activeStrokePointerId) { cancelActiveStroke(); return; }
+        if (activeLoftPointerId !== null && e.pointerId !== activeLoftPointerId) { cancelActiveLoft(); return; }
+        if (state.orbitForced || e.button === 1 || e.button === 2) return;
+        // With touch navigation enabled, leave the single-finger gesture to OrbitControls.
+        if (e.pointerType === 'touch' && !state.fingerPen) return;
+        if (state.mode === 'pick') {
+          const hit = hitTestStrokeOrLoft(e.clientX, e.clientY);
+          if (hit && hit.kind === 'stroke') { setColor(hit.item.color); renderSwatches(); showToast('Picked ' + hit.item.color); }
+          return;
+        }
+        if (state.mode === 'select') {
+          const hit = hitTestStrokeOrLoft(e.clientX, e.clientY);
+          state.selectedItem = hit ? hit.item : null; state.selectedKind = hit ? hit.kind : null;
+          refreshSelectionHelper();
+          const status = document.getElementById('transform-status');
+          if (status) status.textContent = hit ? (hit.kind === 'stroke' ? 'Stroke selected' : 'Loft selected') : 'Nothing selected';
+          const hint = document.getElementById('transform-hint'); if (hint) hint.textContent = hit ? 'Blue outline · use controls below' : 'Tap a stroke or loft to select it';
+          showToast(hit ? 'Object selected · use transform controls' : 'Selection cleared');
+          return;
+        }
+        if (state.mode === 'bucket') { bucketFillAt(e.clientX, e.clientY); return; }
+        if (state.mode === 'eraser') {
+          activeErasePointerId = e.pointerId; activeErasedStrokes = []; activeErasedLofts = [];
+          try { renderer.domElement.setPointerCapture(e.pointerId); } catch (_) {}
+          eraseAt(e.clientX, e.clientY); return;
+        }
+        if (state.mode === 'loft') {
+          const pt = raycastGuideOrPlane(e.clientX, e.clientY, false); if (!pt) return;
+          activeLoftPointerId = e.pointerId; activeLoftPoints = [pt];
+          try { renderer.domElement.setPointerCapture(e.pointerId); } catch (_) {} return;
+        }
+        if (state.mode === 'draw') {
+          const pt = raycastGuideOrPlane(e.clientX, e.clientY, true); if (!pt) return;
+          activeStrokePointerId = e.pointerId;
+          const pressure = e.pointerType === 'pen' && e.pressure > 0 ? e.pressure : 0.65;
+          activeStrokePoints = [{ pos: pt, pressure }];
+          try { renderer.domElement.setPointerCapture(e.pointerId); } catch (_) {}
+        }
+      }
+      function onPointerMove(e) {
+        if (e.pointerId === activeErasePointerId && state.mode === 'eraser' && !state.orbitForced) {
+          eraseAt(e.clientX, e.clientY); return;
+        }
+        const now = performance.now();
+        if (e.pointerId === activeLoftPointerId && state.mode === 'loft') {
+          const pt = raycastGuideOrPlane(e.clientX, e.clientY, false); if (!pt) return;
+          const last = activeLoftPoints[activeLoftPoints.length - 1];
+          if (!last || last.distanceToSquared(pt) > 0.0004) { activeLoftPoints.push(pt); if (now - lastPreviewTime > 16) { lastPreviewTime = now; updateLoftPreview(); } }
+          return;
+        }
+        if (e.pointerId === activeStrokePointerId && state.mode === 'draw') {
+          const samples = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : [e];
+          let changed = false;
+          for (const sample of samples.length ? samples : [e]) {
+            const pt = raycastGuideOrPlane(sample.clientX, sample.clientY, true); if (!pt) continue;
+            const last = activeStrokePoints[activeStrokePoints.length - 1];
+            if (!last || last.pos.distanceToSquared(pt) > 0.000012) {
+              const pressure = sample.pointerType === 'pen' && sample.pressure > 0 ? sample.pressure : 0.65;
+              activeStrokePoints.push({ pos: pt, pressure }); changed = true;
+            }
+          }
+          if (changed && now - lastPreviewTime > 16) { lastPreviewTime = now; updateStrokePreview(); }
+        }
+      }
+      function updateStrokePreview() {
+        if (activeStrokePreviewMesh) {
+          previewGroup.remove(activeStrokePreviewMesh); if (activeStrokePreviewMesh.geometry) activeStrokePreviewMesh.geometry.dispose();
+          if (activeStrokePreviewMesh.material) activeStrokePreviewMesh.material.dispose(); activeStrokePreviewMesh = null;
+        }
+        const geo = buildSpatialStrokeGeometry(activeStrokePoints, state.width, state.opacity, getActiveBrush()); if (!geo) return;
+        activeStrokePreviewMesh = new THREE.Mesh(geo, createStrokeMaterial(state.color, state.opacity, getActiveBrush()));
+        previewGroup.add(activeStrokePreviewMesh);
+      }
+      function updateLoftPreview() {
+        if (activeLoftPreviewMesh) {
+          previewGroup.remove(activeLoftPreviewMesh); if (activeLoftPreviewMesh.geometry) activeLoftPreviewMesh.geometry.dispose();
+          if (activeLoftPreviewMesh.material) activeLoftPreviewMesh.material.dispose(); activeLoftPreviewMesh = null;
+        }
+        const geo = buildLoftGeometry(activeLoftPoints); if (!geo) return;
+        activeLoftPreviewMesh = new THREE.Mesh(geo, createLoftMaterial(true)); previewGroup.add(activeLoftPreviewMesh);
+      }
+      function cancelActiveStroke() {
+        activeStrokePointerId = null; activeStrokePoints = [];
+        if (activeStrokePreviewMesh) {
+          previewGroup.remove(activeStrokePreviewMesh); if (activeStrokePreviewMesh.geometry) activeStrokePreviewMesh.geometry.dispose();
+          if (activeStrokePreviewMesh.material) activeStrokePreviewMesh.material.dispose(); activeStrokePreviewMesh = null;
+        }
+      }
+      function cancelActiveLoft() {
+        activeLoftPointerId = null; activeLoftPoints = [];
+        if (activeLoftPreviewMesh) {
+          previewGroup.remove(activeLoftPreviewMesh); if (activeLoftPreviewMesh.geometry) activeLoftPreviewMesh.geometry.dispose();
+          if (activeLoftPreviewMesh.material) activeLoftPreviewMesh.material.dispose(); activeLoftPreviewMesh = null;
+        }
+      }
+      function onPointerUp(e) {
+        if (e.pointerId === activeErasePointerId) { finishEraseGesture(); return; }
+        if (e.pointerId === activeLoftPointerId) {
+          const pts = activeLoftPoints.slice(); cancelActiveLoft();
+          if (pts.length >= 2) {
+            const loftObj = { id: 'loft_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), points: pts.map((p) => p.clone()), mesh: null };
+            state.lofts.push(loftObj); addLoftToScene(loftObj); pushUndo({ type: 'loft', loft: loftObj }); setMode('draw'); showToast('Loft Ready');
+          }
+          return;
+        }
+        if (e.pointerId === activeStrokePointerId) {
+          // pointerup can arrive without a final pointermove; capture that last position.
+          const finalPoint = raycastGuideOrPlane(e.clientX, e.clientY, true);
+          const lastPoint = activeStrokePoints[activeStrokePoints.length - 1];
+          if (finalPoint && (!lastPoint || lastPoint.pos.distanceToSquared(finalPoint) > 0.000012)) {
+            activeStrokePoints.push({ pos: finalPoint, pressure: e.pointerType === 'pen' && e.pressure > 0 ? e.pressure : 0.65 });
+          }
+          const pts = activeStrokePoints.slice(); cancelActiveStroke();
+          if (pts.length >= 2) {
+            const strokeObj = { id: 'stroke_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6), points: pts,
+              color: state.color, width: state.width, opacity: state.opacity, brushId: state.brushId, mesh: null };
+            state.strokes.push(strokeObj);
+            if (addStrokeToScene(strokeObj)) pushUndo({ type: 'stroke', stroke: strokeObj }); else state.strokes.pop();
+          }
+        }
+      }
+      function exportOBJ() {
+        let out = '# Sketchin3D Spatial Studio Export\n', vertexOffset = 1, meshCount = 0;
+        const exportMesh = (mesh, label) => {
+          if (!mesh || !mesh.geometry) return;
+          const pos = mesh.geometry.getAttribute('position'), idx = mesh.geometry.getIndex();
+          if (!pos || !idx) return;
+          meshCount++; out += `g ${label}_${meshCount}\n`;
+          for (let i = 0; i < pos.count; i++) out += `v ${pos.getX(i).toFixed(5)} ${pos.getY(i).toFixed(5)} ${pos.getZ(i).toFixed(5)}\n`;
+          const arr = idx.array;
+          for (let i = 0; i < arr.length; i += 3) out += `f ${arr[i] + vertexOffset} ${arr[i + 1] + vertexOffset} ${arr[i + 2] + vertexOffset}\n`;
+          vertexOffset += pos.count;
+        };
+        for (const stroke of state.strokes) exportMesh(stroke.mesh, 'stroke');
+        for (const loft of state.lofts) exportMesh(loft.mesh, 'loft');
+        if (!meshCount) { showToast('Nothing to export'); return; }
+        const blob = new Blob([out], { type: 'text/plain;charset=utf-8' }), url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = 'sketchin3d-model.obj'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000); showToast('Exported .OBJ');
+      }
+      function serializeProject() {
+        return {
+          version: 2, theme: state.theme, plane: state.plane, planeDepth: state.planeDepth, planeTilt: state.planeTilt,
+          planeVisible: state.planeVisible, globalAxisVisible: state.globalAxisVisible, color: state.color, width: state.width, opacity: state.opacity,
+          brushId: state.brushId, customBrushes: state.customBrushes,
+          camera: { pos: camera ? [camera.position.x, camera.position.y, camera.position.z] : [4.5, 3.6, 5.5],
+            target: controls ? [controls.target.x, controls.target.y, controls.target.z] : [0, 0, 0] },
+          strokes: state.strokes.map((s) => ({ id: s.id, color: s.color, width: s.width, opacity: s.opacity, brushId: s.brushId,
+            points: s.points.map((p) => ({ pos: [p.pos.x, p.pos.y, p.pos.z], pressure: p.pressure })) })),
+          lofts: state.lofts.map((l) => ({ id: l.id, points: l.points.map((p) => [p.x, p.y, p.z]) })),
+          fills: state.fills.map(f => ({ id: f.id, boundaryId: f.boundaryId, color: f.color, points: f.points.map(p => [p.x, p.y, p.z]) }))
+        };
+      }
+      function loadProjectData(data, silent) {
+        if (!data || typeof data !== 'object') return;
+        for (const st of state.strokes) removeStrokeFromScene(st); for (const lf of state.lofts) removeLoftFromScene(lf); for (const f of state.fills) removeFillFromScene(f);
+        state.strokes = []; state.lofts = []; state.fills = []; state.undoStack = []; state.redoStack = []; state.selectedItem = null; state.selectedKind = null; clearSelectionHelper();
+        if (Array.isArray(data.customBrushes)) {
+          state.customBrushes = data.customBrushes.slice(0, 24);
+          try { localStorage.setItem(CUSTOM_BRUSHES_KEY, JSON.stringify(state.customBrushes)); } catch (_) {}
+        }
+        if (data.theme) applyTheme(data.theme);
+        if (data.plane) setPlane(data.plane);
+        if (typeof data.planeDepth === 'number') state.planeDepth = data.planeDepth;
+        if (typeof data.planeTilt === 'number') state.planeTilt = data.planeTilt;
+        if (typeof data.globalAxisVisible === 'boolean') setGlobalAxisVisible(data.globalAxisVisible);
+        if (typeof data.planeVisible === 'boolean') {
+          state.planeVisible = data.planeVisible; document.getElementById('btn-plane-vis').classList.toggle('active', state.planeVisible);
+        }
+        if (data.color) setColor(data.color);
+        if (typeof data.width === 'number') { state.width = data.width; document.getElementById('slider-width').value = state.width; document.getElementById('val-width').textContent = state.width.toFixed(3); }
+        if (typeof data.opacity === 'number') { state.opacity = data.opacity; document.getElementById('slider-opacity').value = state.opacity; document.getElementById('val-opacity').textContent = Math.round(state.opacity * 100) + '%'; }
+        if (data.brushId) state.brushId = data.brushId;
+        updateGuideVisuals(); renderSwatches(); renderBrushList();
+        if (Array.isArray(data.strokes)) for (const rawS of data.strokes) {
+          if (!Array.isArray(rawS.points) || rawS.points.length < 2) continue;
+          const strokeObj = { id: rawS.id || ('st_' + Math.random().toString(36).slice(2, 8)), color: rawS.color || '#56ccf2',
+            width: typeof rawS.width === 'number' ? rawS.width : 0.034, opacity: typeof rawS.opacity === 'number' ? rawS.opacity : 0.96,
+            brushId: rawS.brushId || 'ink', points: rawS.points.map((pt) => ({ pos: new THREE.Vector3(pt.pos[0], pt.pos[1], pt.pos[2]),
+              pressure: typeof pt.pressure === 'number' ? pt.pressure : 0.65 })), mesh: null };
+          state.strokes.push(strokeObj); addStrokeToScene(strokeObj);
+        }
+        if (Array.isArray(data.lofts)) for (const rawL of data.lofts) {
+          if (!Array.isArray(rawL.points) || rawL.points.length < 2) continue;
+          const loftObj = { id: rawL.id || ('lf_' + Math.random().toString(36).slice(2, 8)),
+            points: rawL.points.map((p) => new THREE.Vector3(p[0], p[1], p[2])), mesh: null };
+          state.lofts.push(loftObj); addLoftToScene(loftObj);
+        }
+        if (Array.isArray(data.fills)) for (const rawF of data.fills) {
+          if (!Array.isArray(rawF.points) || rawF.points.length < 3) continue;
+          const fill = { id: rawF.id || ('fill_' + Math.random().toString(36).slice(2, 8)), boundaryId: rawF.boundaryId || '', color: rawF.color || '#56ccf2', points: rawF.points.map(p => new THREE.Vector3(p[0], p[1], p[2])), mesh: null };
+          state.fills.push(fill); makeFillMesh(fill);
+        }
+        if (data.camera && Array.isArray(data.camera.pos) && camera && controls) {
+          camera.position.set(data.camera.pos[0], data.camera.pos[1], data.camera.pos[2]);
+          if (Array.isArray(data.camera.target)) controls.target.set(data.camera.target[0], data.camera.target[1], data.camera.target[2]);
+          controls.update();
+        }
+        updatePlaneLabels(); syncHistoryButtons(); if (!silent) showToast('Loaded');
+      }
+      function saveProjectJSON() {
+        const payload = JSON.stringify(serializeProject(), null, 2), blob = new Blob([payload], { type: 'application/json' });
+        const url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = 'sketchin3d-project.json'; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000); showToast('Saved JSON');
+      }
+      function scheduleAutosave() {
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(() => {
+          try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(serializeProject())); }
+          catch (_) { try { const slim = serializeProject(); slim.customBrushes = []; localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(slim)); } catch (__) {} }
+        }, 300);
+      }
+      function handleBrushFileImport(file) {
+        if (!file) return;
+        const baseName = file.name.replace(/\.[^.]+$/, '').slice(0, 12) || 'Custom';
+        if (file.name.toLowerCase().endsWith('.json')) {
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const parsed = JSON.parse(reader.result); if (!parsed || typeof parsed !== 'object') throw new Error('Invalid brush'); const custom = { id: 'custom_' + Date.now(), name: String(parsed.name || baseName).slice(0, 12),
+                style: parsed.style || 'ink', widthScale: typeof parsed.widthScale === 'number' ? parsed.widthScale : 1.0,
+                taperStart: typeof parsed.taperStart === 'number' ? parsed.taperStart : 0.24,
+                taperEnd: typeof parsed.taperEnd === 'number' ? parsed.taperEnd : 0.22, imageData: parsed.imageData || null };
+              state.customBrushes.push(custom); state.brushId = custom.id;
+              try { localStorage.setItem(CUSTOM_BRUSHES_KEY, JSON.stringify(state.customBrushes)); } catch (_) {}
+              renderBrushList(); scheduleAutosave(); showToast('Imported ' + custom.name);
+            } catch (_) { showToast('Invalid brush JSON'); }
+          };
+          reader.readAsText(file); return;
+        }
+        const reader = new FileReader();
+        reader.onload = () => {
+          const custom = { id: 'custom_' + Date.now(), name: baseName, style: 'ribbon', widthScale: 1.2,
+            taperStart: 0.25, taperEnd: 0.25, imageData: reader.result };
+          state.customBrushes.push(custom); state.brushId = custom.id;
+          try { localStorage.setItem(CUSTOM_BRUSHES_KEY, JSON.stringify(state.customBrushes)); } catch (_) {}
+          renderBrushList(); scheduleAutosave(); showToast('Imported ' + custom.name);
+        };
+        reader.readAsDataURL(file);
+      }
+      function addSampleBrush() {
+        const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, 64, 64);
+        ctx.strokeStyle = '#000000'; ctx.lineWidth = 4;
+        for (let i = -32; i < 96; i += 10) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i + 24, 64); ctx.stroke(); }
+        const custom = { id: 'custom_' + Date.now(), name: 'Hatch', style: 'ribbon', widthScale: 1.3,
+          taperStart: 0.2, taperEnd: 0.2, imageData: canvas.toDataURL('image/png') };
+        state.customBrushes.push(custom); state.brushId = custom.id;
+        try { localStorage.setItem(CUSTOM_BRUSHES_KEY, JSON.stringify(state.customBrushes)); } catch (_) {}
+        renderBrushList(); showToast('Added Hatch');
+      }
+      function setCameraPreset(preset) {
+        if (!camera || !controls) return;
+        controls.target.set(0, 0, 0);
+        if (preset === 'front') camera.position.set(0, 0.8, 7.2);
+        else if (preset === 'top') camera.position.set(0.001, 8.2, 0.001);
+        else camera.position.set(4.5, 3.6, 5.5);
+        controls.update(); showToast(preset.toUpperCase());
+      }
+      function createTouchShortcuts() {
+        const style = document.createElement('style');
+        style.textContent = `
+          #touch-shortcuts{position:fixed;right:14px;bottom:calc(86px + env(safe-area-inset-bottom));z-index:50;display:flex;flex-direction:column;gap:8px;pointer-events:auto}
+          #touch-shortcuts button{border:1px solid var(--line,rgba(255,255,255,.18));background:rgba(18,22,32,.88);color:#f4f6fb;border-radius:10px;padding:8px;min-height:34px;font:600 11px/1 system-ui;box-shadow:0 5px 18px rgba(0,0,0,.22);backdrop-filter:blur(12px);touch-action:manipulation}
+          #transform-panel{display:none;max-width:230px;padding:9px;border:1px solid var(--line,rgba(255,255,255,.18));border-radius:14px;background:rgba(18,22,32,.92);backdrop-filter:blur(12px);box-shadow:0 5px 18px rgba(0,0,0,.22)}
+          #transform-panel.visible{display:block}
+          #transform-panel .trow{display:flex;gap:5px;margin-top:5px}
+          #transform-panel button{flex:1;min-width:34px;padding:8px 7px;min-height:34px;border-radius:9px;font-size:11px}
+          #transform-status{font:11px system-ui;color:#cbd5e1;white-space:nowrap}
+          #transform-hint{font:10px system-ui;color:#94a3b8;margin-top:4px}
+          @media(min-width:900px){#touch-shortcuts{bottom:24px;right:24px}}
+        `;
+        document.head.appendChild(style);
+        const wrap = document.createElement('div'); wrap.id = 'touch-shortcuts';
+        const panel = document.createElement('div'); panel.id = 'transform-panel';
+        panel.innerHTML = '<div id="transform-status">Nothing selected</div><div id="transform-hint">Select an object to show its outline</div><div class="trow"><button data-transform="left">X−</button><button data-transform="right">X+</button><button data-transform="up">Y+</button><button data-transform="down">Y−</button></div><div class="trow"><button data-transform="forward">Z−</button><button data-transform="back">Z+</button></div><div class="trow"><button data-transform="rotate-left">↶ 15°</button><button data-transform="rotate-right">↷ 15°</button></div><div class="trow"><button data-transform="scale-down">− Scale</button><button data-transform="scale-up">+ Scale</button></div>';
+        panel.querySelectorAll('[data-transform]').forEach(btn => btn.addEventListener('click', () => transformSelected(btn.dataset.transform)));
+        wrap.appendChild(panel); document.body.appendChild(wrap);
+        document.querySelector('[data-mode=select]')?.addEventListener('click', () => { panel.classList.add('visible'); });
+        document.querySelectorAll('#left-rail [data-mode]:not([data-mode=select])').forEach(btn => btn.addEventListener('click', () => panel.classList.remove('visible')));
+      }
+      function bindUI() {
+        document.getElementById('btn-undo').addEventListener('click', undo);
+        document.getElementById('btn-redo').addEventListener('click', redo);
+        document.getElementById('btn-clear').addEventListener('click', clearAll);
+        document.getElementById('btn-save').addEventListener('click', saveProjectJSON);
+        document.getElementById('btn-load').addEventListener('click', () => document.getElementById('file-project-input').click());
+        document.getElementById('file-project-input').addEventListener('change', (e) => {
+          const file = e.target.files && e.target.files[0]; if (!file) return;
+          const reader = new FileReader();
+          reader.onload = () => { try { loadProjectData(JSON.parse(reader.result), false); } catch (_) { showToast('Invalid JSON'); } };
+          reader.readAsText(file); e.target.value = '';
+        });
+        document.getElementById('btn-theme').addEventListener('click', () => {
+          applyTheme(state.theme === 'dark' ? 'light' : 'dark'); showToast(state.theme === 'light' ? 'Light' : 'Dark');
+        });
+        document.getElementById('btn-export-obj').addEventListener('click', exportOBJ);
+        document.getElementById('btn-toggle-guides-card').addEventListener('click', (e) => {
+          const isOpen = document.getElementById('guides-card').classList.toggle('open'); e.currentTarget.classList.toggle('active', isOpen);
+        });
+        document.querySelectorAll('#left-rail [data-mode]').forEach((btn) => btn.addEventListener('click', () => setMode(btn.dataset.mode)));
+        document.getElementById('btn-color-dot').addEventListener('click', () => document.getElementById('brush-pop').classList.toggle('open'));
+        document.getElementById('btn-import-brush').addEventListener('click', () => document.getElementById('file-brush-input').click());
+        document.getElementById('file-brush-input').addEventListener('change', (e) => { const file = e.target.files && e.target.files[0]; if (file) handleBrushFileImport(file); e.target.value = ''; });
+        document.querySelectorAll('#guides-card [data-plane]').forEach((btn) => btn.addEventListener('click', () => setPlane(btn.dataset.plane)));
+        document.getElementById('btn-global-axis').addEventListener('click', () => setGlobalAxisVisible(!state.globalAxisVisible));
+        document.getElementById('btn-plane-vis').addEventListener('click', (e) => {
+          state.planeVisible = !state.planeVisible; e.currentTarget.classList.toggle('active', state.planeVisible);
+          updateGuideVisuals(); scheduleAutosave();
+        });
+        document.getElementById('btn-depth-minus').addEventListener('click', () => {
+          state.planeDepth = Math.max(-5, Number((state.planeDepth - 0.25).toFixed(2))); updateGuideVisuals(); scheduleAutosave(); showToast('D: ' + state.planeDepth.toFixed(2));
+        });
+        document.getElementById('btn-depth-plus').addEventListener('click', () => {
+          state.planeDepth = Math.min(5, Number((state.planeDepth + 0.25).toFixed(2))); updateGuideVisuals(); scheduleAutosave(); showToast('D: ' + state.planeDepth.toFixed(2));
+        });
+        document.getElementById('btn-tilt-minus').addEventListener('click', () => {
+          state.planeTilt = (((state.planeTilt - 15) % 360) + 360) % 360; if (state.planeTilt > 180) state.planeTilt -= 360;
+          updateGuideVisuals(); scheduleAutosave(); showToast(state.planeTilt + '°');
+        });
+        document.getElementById('btn-tilt-plus').addEventListener('click', () => {
+          state.planeTilt = (((state.planeTilt + 15) % 360) + 360) % 360; if (state.planeTilt > 180) state.planeTilt -= 360;
+          updateGuideVisuals(); scheduleAutosave(); showToast(state.planeTilt + '°');
+        });
+        document.getElementById('btn-reset-plane').addEventListener('click', () => {
+          state.planeDepth = 0; state.planeTilt = 0; updateGuideVisuals(); scheduleAutosave(); showToast('Plane Reset');
+        });
+        document.getElementById('btn-clear-lofts').addEventListener('click', () => {
+          if (!state.lofts.length) return;
+          const erased = state.lofts.slice(); for (const lf of erased) removeLoftFromScene(lf);
+          state.lofts = []; pushUndo({ type: 'erase', erasedStrokes: [], erasedLofts: erased }); showToast('Lofts Cleared');
+        });
+        document.querySelectorAll('#bottom-bar [data-cam]').forEach((btn) => btn.addEventListener('click', () => setCameraPreset(btn.dataset.cam)));
+        document.getElementById('btn-orbit-toggle').addEventListener('click', (e) => {
+          state.orbitForced = !state.orbitForced; e.currentTarget.classList.toggle('active', state.orbitForced);
+          updateOrbitControlsForMode(); showToast(state.orbitForced ? 'Orbit' : 'Draw');
+        });
+        const widthSlider = document.getElementById('slider-width'), widthVal = document.getElementById('val-width');
+        widthSlider.addEventListener('input', (e) => { state.width = parseFloat(e.target.value); widthVal.textContent = state.width.toFixed(3); scheduleAutosave(); });
+        const opSlider = document.getElementById('slider-opacity'), opVal = document.getElementById('val-opacity');
+        opSlider.addEventListener('input', (e) => { state.opacity = parseFloat(e.target.value); opVal.textContent = Math.round(state.opacity * 100) + '%'; scheduleAutosave(); });
+        document.getElementById('btn-retry').addEventListener('click', () => window.location.reload());
+      }
+      function initScene() {
+        if (typeof THREE === 'undefined' || typeof THREE.OrbitControls === 'undefined') throw new Error('Three.js r128 or OrbitControls failed to load.');
+        const canvas = document.getElementById('viewport'), w = window.innerWidth, h = window.innerHeight;
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(48, Math.max(1, w) / Math.max(1, h), 0.05, 120);
+        camera.position.set(4.5, 3.6, 5.5);
+        renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2)); renderer.setSize(w, h);
+        controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; controls.dampingFactor = 0.08; controls.minDistance = 1.2; controls.maxDistance = 32;
+        updateOrbitControlsForMode();
+        ambientLight = new THREE.AmbientLight(0x9bb4e5, 0.74); scene.add(ambientLight);
+        keyLight = new THREE.DirectionalLight(0xffffff, 1.05); keyLight.position.set(6, 10, 7); scene.add(keyLight);
+        rimLight = new THREE.DirectionalLight(0x7aa8ff, 0.65); rimLight.position.set(-7, 4, -6); scene.add(rimLight);
+        studioGroup = new THREE.Group(); strokesGroup = new THREE.Group(); loftsGroup = new THREE.Group(); fillsGroup = new THREE.Group();
+        guideGroup = new THREE.Group(); previewGroup = new THREE.Group();
+        scene.add(studioGroup, loftsGroup, fillsGroup, strokesGroup, guideGroup, previewGroup);
+        createGlobalAxis();
+        floorGridHelper = new THREE.GridHelper(16, 32, 0x4b6288, 0x2c3c58);
+        floorGridHelper.position.y = -0.002; floorGridHelper.material.transparent = true; floorGridHelper.material.opacity = 0.24; studioGroup.add(floorGridHelper);
+        const hitGeo = new THREE.PlaneGeometry(8, 8); hitGeo.rotateX(-Math.PI / 2);
+        guideHitMesh = new THREE.Mesh(hitGeo, new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide })); guideGroup.add(guideHitMesh);
+        guideGridHelper = new THREE.GridHelper(8, 32, 0x4f8fff, 0x54739f);
+        guideGridHelper.material.transparent = true; guideGridHelper.material.opacity = 0.32; guideGridHelper.material.depthWrite = false; guideGroup.add(guideGridHelper);
+        try { const savedCustom = localStorage.getItem(CUSTOM_BRUSHES_KEY); if (savedCustom) { const arr = JSON.parse(savedCustom); if (Array.isArray(arr)) state.customBrushes = arr; } } catch (_) {}
+        try { const savedAuto = localStorage.getItem(AUTOSAVE_KEY); if (savedAuto) loadProjectData(JSON.parse(savedAuto), true); } catch (_) {}
+        applyTheme(state.theme); updateGuideVisuals(); setGlobalAxisVisible(state.globalAxisVisible); renderSwatches(); renderBrushList();
+        function handleResize() {
+          if (!camera || !renderer) return;
+          const nw = window.innerWidth, nh = window.innerHeight; camera.aspect = Math.max(1, nw) / Math.max(1, nh);
+          camera.updateProjectionMatrix(); renderer.setSize(nw, nh);
+        }
+        window.addEventListener('resize', handleResize);
+        if (typeof ResizeObserver !== 'undefined') { const ro = new ResizeObserver(handleResize); ro.observe(canvas); }
+        canvas.addEventListener('pointerdown', onPointerDown); canvas.addEventListener('pointermove', onPointerMove);
+        canvas.addEventListener('pointerup', onPointerUp);
+        const cancelPointerWork = (e) => { if (!e || e.pointerId === activeStrokePointerId) cancelActiveStroke(); if (!e || e.pointerId === activeLoftPointerId) cancelActiveLoft(); if (!e || e.pointerId === activeErasePointerId) finishEraseGesture(); };
+        canvas.addEventListener('pointercancel', cancelPointerWork);
+        canvas.addEventListener('lostpointercapture', cancelPointerWork);
+        window.addEventListener('blur', () => cancelPointerWork(null));
+        function animate() { requestAnimationFrame(animate); if (controls) controls.update(); if (renderer && scene && camera) renderer.render(scene, camera); }
+        animate();
+      }
+      function waitForLibsAndStart() {
+        bindUI(); createTouchShortcuts(); let tries = 0;
+        const timer = setInterval(() => {
+          tries++;
+          if (typeof THREE !== 'undefined' && typeof THREE.OrbitControls !== 'undefined') {
+            clearInterval(timer); try { initScene(); } catch (err) { showFatalError(err); }
+          } else if (tries > 120) { clearInterval(timer); showFatalError(new Error('Timed out loading Three.js or OrbitControls from CDN.')); }
+        }, 50);
+      }
+      if ('serviceWorker' in navigator && (location.protocol === 'https:' || location.protocol === 'http:')) {
+        const swCode = `
+          const CACHE = 'feather3d-offline-v1';
+          self.addEventListener('install', (e) => {
+            e.waitUntil(caches.open(CACHE).then((c) => c.addAll([self.location.href])).catch(() => {}));
+            self.skipWaiting();
+          });
+          self.addEventListener('activate', (e) => { e.waitUntil(self.clients.claim()); });
+          self.addEventListener('fetch', (e) => {
+            if (e.request.method !== 'GET') return;
+            e.respondWith(caches.match(e.request).then((cached) => cached || fetch(e.request).then((res) => {
+              const copy = res.clone(); caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {}); return res;
+            }).catch(() => cached)));
+          });
+        `;
+        try {
+          const blob = new Blob([swCode], { type: 'application/javascript' }), swUrl = URL.createObjectURL(blob);
+          navigator.serviceWorker.register(swUrl).then(() => setTimeout(() => URL.revokeObjectURL(swUrl), 2000)).catch(() => {});
+        } catch (_) {}
+      }
+      if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', waitForLibsAndStart);
+      else waitForLibsAndStart();
+    })();
+  </script>
+</body>
+</html>
